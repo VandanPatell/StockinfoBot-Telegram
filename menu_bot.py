@@ -1,4 +1,4 @@
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update, ReplyKeyboardRemove
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeyboardMarkup, Update, ReplyKeyboardRemove, user
 from telegram.ext import (
     Updater,
     CommandHandler,
@@ -6,21 +6,28 @@ from telegram.ext import (
     ConversationHandler,
     CallbackContext,
     MessageHandler,
+    conversationhandler,
     dispatcher,
     Filters
 )
-
+import logging
 from Stock import NseData
+from datetime import datetime
 
+METHOD, COMPANY = range(2)
 
-METHOD, MARKET, COMPANY = range(3)
-
+# To store the unique user choice's
 UserChoice = {}
 
 
 def start(update: Update, context: CallbackContext) -> int:
-    print(" --> start")
-    reply_keyboard = [['Search By Name', 'Search By ScripCode']]
+    # print(" -- start -- ")
+    user = update.message.from_user
+    print(f" {datetime.now()} - User {user['username']} : /start")
+    reply_keyboard = [
+        ['Search By Name - NSE'], ['Search By ScripCode - NSE'],
+        ['Search By Name - BSE'], ['Search By ScripCode - BSE']
+    ]
     markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
     update.message.reply_text(
         "Hi! Please choose an option:",
@@ -34,33 +41,13 @@ def getCompanyDetailsNSE(company_name: str) -> str:
     return company_details
 
 
-def MarketByName(update: Update, context: CallbackContext) -> int:
-    print(" --> MarketByName")
-    user_data = context.user_data
-    print(user_data)
-    reply_keyboard = [['Search Name In NSE', 'Search Name In BSE']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text(
-        "Hi! Please choose an option:",
-        reply_markup=markup,
-    )
-    return MARKET
-
-
-def MarketByScripCode(update: Update, context: CallbackContext) -> int:
-    print(" --> MarketByScripCode")
-    reply_keyboard = [['NSE ScripCode', 'BSE ScripCode']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text(
-        "Hi! Please choose an option:",
-        reply_markup=markup,
-    )
-    return MARKET
-
-
 def searchNameinNSE(update: Update, context: CallbackContext) -> int:
     print(" --> searchNameinNSE")
-    pass
+    user = update.message.from_user
+    # user_input = update.message.text
+    UserChoice[user] = "SearchNameinNSE"
+    update.message.reply_text("Please enter the company name:")
+    return COMPANY
 
 
 def searchNameinBSE(update: Update, context: CallbackContext) -> int:
@@ -77,6 +64,11 @@ def searchScripCodeinNSE(update: Update, context: CallbackContext) -> int:
     return COMPANY
 
 
+def searchScripCodeinBSE(update: Update, context: CallbackContext) -> int:
+    print(" --> searchScripCodeinBSE")
+    pass
+
+
 def reply(update: Update, context: CallbackContext) -> None:
     print(" --> reply")
     user = update.message.from_user
@@ -85,26 +77,13 @@ def reply(update: Update, context: CallbackContext) -> None:
     if UserChoice[user] == "SearchScripCodeinNSE":
         company_details = getCompanyDetailsNSE(user_input)
         update.message.reply_text(company_details, parse_mode='Markdown')
+        return ConversationHandler.END
     elif UserChoice[user] == "SearchScripCodeinBSE":
+        pass
+    elif UserChoice[user] == "SearchNameinNSE":
         pass
     else:
         pass
-
-
-def searchScripCodeinBSE(update: Update, context: CallbackContext) -> int:
-    print(" --> searchScripCodeinBSE")
-    pass
-
-
-def market(update: Update, context: CallbackContext) -> int:
-    print(" --> market")
-    reply_keyboard = [['Search In NSE', 'Search In BSE']]
-    markup = ReplyKeyboardMarkup(reply_keyboard, one_time_keyboard=True)
-    update.message.reply_text(
-        "Hi! Please choose an option:",
-        reply_markup=markup,
-    )
-    return COMPANY
 
 
 def main() -> None:
@@ -120,19 +99,13 @@ def main() -> None:
             states={
                 METHOD: [
                     MessageHandler(Filters.regex(
-                        '^Search By Name$'), MarketByName),
+                        '^Search By Name - NSE$'), searchNameinNSE),
                     MessageHandler(Filters.regex(
-                        '^Search By ScripCode$'), MarketByScripCode)
-                ],
-                MARKET: [
+                        '^Search By Name - BSE$'), searchNameinBSE),
                     MessageHandler(Filters.regex(
-                        '^Search Name In NSE$'), searchNameinNSE),
+                        '^Search By ScripCode - NSE$'), searchScripCodeinNSE),
                     MessageHandler(Filters.regex(
-                        '^Search Name In BSE$'), searchNameinBSE),
-                    MessageHandler(Filters.regex(
-                        '^NSE ScripCode$'), searchScripCodeinNSE),
-                    MessageHandler(Filters.regex(
-                        '^BSE ScripCode$'), searchScripCodeinBSE)
+                        '^Search By ScripCode - BSE$'), searchScripCodeinBSE)
                 ],
                 COMPANY: [MessageHandler(Filters.text, reply)]
             },
