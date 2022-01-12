@@ -1,1 +1,3 @@
-Heyy
+python-telegram-bot
+bsedata
+nsetools
